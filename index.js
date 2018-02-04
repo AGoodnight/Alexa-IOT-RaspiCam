@@ -1,3 +1,5 @@
+"use strict"
+
 let RaspiCam = require("raspicam");
 let awsIot = require('aws-iot-device-sdk');
 
@@ -16,9 +18,9 @@ let camera = new RaspiCam({
 });
 
 let device = awsIot.device({
-   keyPath: '/credentials/c84fa5187d-private.pem.key',
-  certPath: '/credentials/c84fa5187d-certificate.pem.crt',
-    caPath: '/credentials/rootca.pem',
+   keyPath: './credentials/c84fa5187d-private.pem.key',
+  certPath: './credentials/c84fa5187d-certificate.pem.crt',
+    caPath: './credentials/rootca.pem',
   clientId: "Rhubarb",
       host: "arn:aws:iot:us-east-1:696610291095:thing/Rhubarb"
 });

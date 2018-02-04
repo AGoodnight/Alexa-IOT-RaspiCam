@@ -16,9 +16,9 @@ let camera = new RaspiCam({
 });
 
 let device = awsIot.device({
-   keyPath: '/credentials',
-  certPath: '/credentials',
-    caPath: '/credentials',
+   keyPath: '/credentials/c84fa5187d-private.pem.key',
+  certPath: '/credentials/c84fa5187d-certificate.pem.crt',
+    caPath: '/credentials/rootca.pem',
   clientId: "Rhubarb",
       host: "arn:aws:iot:us-east-1:696610291095:thing/Rhubarb"
 });
@@ -26,9 +26,6 @@ let device = awsIot.device({
 
 //to take a snapshot, start a timelapse or video recording
 camera.start( );
-
-//to stop a timelapse or video recording
-camera.stop( );
 
 //listen for the "start" event triggered when the start method has been successfully initiated
 camera.on("start", function(){
@@ -49,6 +46,7 @@ camera.on("stop", function(){
 camera.on("exit", function(){
 	//do stuff
 });
+
 //
 // Device is an instance returned by mqtt.Client(), see mqtt.js for full
 // documentation.

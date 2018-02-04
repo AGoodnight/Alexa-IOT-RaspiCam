@@ -22,7 +22,7 @@ let device = awsIot.device({
   certPath: './credentials/c84fa5187d-certificate.pem.crt',
     caPath: './credentials/rootca.pem',
   clientId: "Rhubarb",
-      host: "arn:aws:iot:us-east-1:696610291095:thing/Rhubarb"
+      host: "a1gptjpcib99ew.iot.us-east-1.amazonaws.com"
 });
 
 

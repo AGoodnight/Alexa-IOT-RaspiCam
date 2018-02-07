@@ -12,7 +12,7 @@ const moment = require('moment');
 var _now = moment.now();
 var _filename = 'photo-'+_now+'.jpg';
 var _bucket = "rhubarbphotobucket";
-var _client_id = "RhubarbCamera";
+var _client_id = "Rhubarb";
 var s3Params = {};
 var camera = null;
 

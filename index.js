@@ -1,66 +1,96 @@
-"use strict"
+#!/usr/bin/env node
 
-let RaspiCam = require("raspicam");
-let awsIot = require('aws-iot-device-sdk');
+'strict mode';
 
-//
-// Replace the values of '<YourUniqueClientIdentifier>' and '<YourCustomEndpoint>'
-// with a unique client identifier and custom host endpoint provided in AWS IoT.
-// NOTE: client identifiers must be unique within your AWS account; if a client attempts
-// to connect with a client identifier which is already in use, the existing
-// connection will be terminated.
-//
-let camera = new RaspiCam({
-		mode:'photo',
-		output:'photo/image%06d.jpg',
-		rotation:'90',
-		encoding: "jpg"
+const fs = require('fs');
+const AWS = require('aws-sdk');
+const RaspiCam = require('raspicam');
+const IotDevice = require('aws-iot-device-sdk');
+const path = require('path');
+const moment = require('moment');
+
+var _now = moment.now();
+var _filename = 'photo-'+_now+'.jpg';
+var _bucket = "rhubarbphotobucket";
+var _client_id = "RhubarbCamera";
+var s3Params = {};
+var camera = null;
+
+// S3 Access
+AWS.config.loadFromPath('./aws_config.json');
+
+// Hardware Camera
+var s3 = new AWS.S3({ region:AWS.config.region });
+
+// IOT access
+var Rhubarb = IotDevice.device({
+  keyPath:'./credentials/c84fa5187d-private.pem.key',
+  certPath:'./credentials/c84fa5187d-certificate.pem.crt',
+  caPath:'./credentials/rootca.pem',
+  clientId:_client_id,
+  host:'a1gptjpcib99ew.iot.us-east-1.amazonaws.com',
+  regions:'us-east-1'
+})
+
+// IOT Events
+Rhubarb.on('connect',function(){
+  console.log('Rhubarb Connected to AWS IOT');
+  makeCamera();
+  Rhubarb.subscribe('action_take_photo');
+  Rhubarb.publish('init_started',JSON.stringify({
+    init:true
+  }));
 });
 
-let device = awsIot.device({
-   keyPath: './credentials/c84fa5187d-private.pem.key',
-  certPath: './credentials/c84fa5187d-certificate.pem.crt',
-    caPath: './credentials/rootca.pem',
-  clientId: "Rhubarb",
-      host: "a1gptjpcib99ew.iot.us-east-1.amazonaws.com"
+Rhubarb.on('message',function(topic,payload){
+  console.log('Topic :',topic, 'Payload: ',payload.toString());
+  if(topic ==='action_take_photo'){
+    camera.start();
+  }
 });
 
+// Camera Instance Constructor
+function makeCamera() {
+    _now = moment.now();
+    _filename = 'photo-'+_now+'.jpg';
+    camera = new RaspiCam({
+        mode: "photo",
+        output: path.join(__dirname,'/photos/'+_filename),
+        encoding: 'jpg',
+        rot:"270",
+        timeout: 0
+    });
+    camera.on("start", function(err, timestamp){
+        console.log('--> Camera Started @ ', timestamp)
+    });
+    camera.on('read', function(err, timestamp, filename){
+        console.log('--> Camera Reading:')
+        console.log(timestamp);
+        console.log(filename);
+        _filename = filename;
+        camera.stop();
+    });
+    camera.on('stop', function(){
+        console.log('--> Camera Stopped');
+        upload();
+    });
+    camera.on('exit', function(timestamp){
+        console.log('--> Camera Exited @ ', timestamp);
+    });
+}
 
-//to take a snapshot, start a timelapse or video recording
-camera.start( );
-
-//listen for the "start" event triggered when the start method has been successfully initiated
-camera.on("start", function(){
-	//do stuff
-});
-
-//listen for the "read" event triggered when each new photo/video is saved
-camera.on("read", function(err, timestamp, filename){
-	//do stuff
-});
-
-//listen for the "stop" event triggered when the stop method was called
-camera.on("stop", function(){
-	//do stuff
-});
-
-//listen for the process to exit when the timeout has been reached
-camera.on("exit", function(){
-	//do stuff
-});
-
-//
-// Device is an instance returned by mqtt.Client(), see mqtt.js for full
-// documentation.
-//
-device
-  .on('connect', function() {
-    console.log('connect');
-    device.subscribe('topic_1');
-    device.publish('topic_2', JSON.stringify({ test_data: 1}));
+function upload(){
+  s3Params = {
+    Key:_filename,
+    Body:fs.createReadStream(path.join(__dirname,'/photos/'+_filename)),
+    Bucket:_bucket,
+    ACL:'public-read-write'
+  }
+  s3.upload(s3Params,(err,data)=>{
+    if(err){
+      console.log('Upload FAILED',err);
+    }else{
+      console.log('Upload WORKED');
+    }
   });
-
-device
-  .on('message', function(topic, payload) {
-    console.log('message', topic, payload.toString());
-  });
+}
